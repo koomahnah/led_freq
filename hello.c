@@ -5,6 +5,7 @@
 #include <asm/uaccess.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
+#include <linux/gpio.h>
 
 #define HELLO_MAJOR	0
 #define HELLO_MINOR	0
@@ -27,7 +28,8 @@ struct hello_dev{
 	struct cdev cdev;
 	char hello_data[HELLO_DATA_SIZE];
 	int hello_data_amount;
-	int invert;
+	int led_fail;
+	int led_value; 
 };
 
 static struct hello_dev my_hello_dev;
@@ -67,9 +69,12 @@ static int hello_open(struct inode *inode, struct file *filp){
 	}
 	if(filp->f_flags & O_APPEND)
 		printk(KERN_ALERT "APPEND flag set.\n");
-
-	if(minor == 0) this_dev->invert = 0;
-	else this_dev->invert = 1;
+	if(this_dev->led_value)
+		this_dev->led_value = 0;
+	else
+		this_dev->led_value = 1;
+	gpio_set_value(16, this_dev->led_value); 
+	printk(KERN_ALERT "Pin set to %i", this_dev->led_value);
 
 	return 0;
 }
@@ -92,13 +97,8 @@ static int hello_read(struct file *f, char __user *u, size_t s, loff_t *f_pos){
 		s = this_dev->hello_data_amount - *f_pos;
 		printk(KERN_ALERT "s became: %i", s);
 	}
-	if(this_dev->invert)
-		for(i=0;i<s;i++)
-			buf[s-i-1] = this_dev->hello_data[i+*f_pos];
-	else
-		for(i=0;i<s;i++)
-			buf[i] = this_dev->hello_data[i+*f_pos];
-	
+	for(i=0;i<s;i++)
+		buf[i] = this_dev->hello_data[i+*f_pos];
 	if(copy_to_user(u, buf, s)!=0){
 		printk(KERN_ALERT "Hello_read, copying failure.\n");
 		return -EFAULT;
@@ -213,6 +213,19 @@ static int hello_init(void)
 	for(i=0;i<HELLO_DATA_SIZE;i++)
 		my_hello_dev.hello_data[i] = 0;
 	printk(KERN_ALERT "Hello, world. Major: %i\n", MAJOR(my_dev));
+
+	gpio_free(16);
+	my_hello_dev.led_fail = gpio_request(16, "testpin");
+	if(my_hello_dev.led_fail)
+		printk(KERN_ALERT "Error, returned %i\n", my_hello_dev.led_fail);
+	else{
+		printk(KERN_ALERT "Success requesting.\n");
+		my_hello_dev.led_value = 1;
+		if(gpio_direction_output(16, my_hello_dev.led_value)){
+			printk(KERN_ALERT "Fail setting to output.\n");
+			my_hello_dev.led_fail = 1;
+		}
+	}
 	return 0;
 }
 static void hello_exit(void)
@@ -220,6 +233,9 @@ static void hello_exit(void)
 	cdev_del(&(my_hello_dev.cdev));
 	unregister_chrdev_region(my_dev, 2);
 	printk(KERN_ALERT "Goodbye, cruel world\n");
+	if(!my_hello_dev.led_fail)
+		gpio_free(16);
+
 }
 module_init(hello_init);
 module_exit(hello_exit);

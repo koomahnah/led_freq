@@ -1,3 +1,3 @@
-Inverting module
+led_freq module
 --------------
-Put data in /dev/hello0 or /dev/hello1. Get it at back at /dev/hello0 or - inverted - at /dev/hello1.
+Put frequency in decimal system to /dev/led_freq0. Compile & reload with module_rebuild_reload.sh. Kernel headers must be in /usr/src directory.

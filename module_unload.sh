@@ -1,3 +1,4 @@
 #!/bin/sh
-/sbin/rmmod hello.ko || exit 1
-rm -f /dev/hello[0-1]
+module="led_freq"
+/sbin/rmmod ${module}.ko || exit 1
+rm -f /dev/${module}0

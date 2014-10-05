@@ -1,1 +1,6 @@
-obj-m := hello.o
+obj-m += led_freq.o
+
+all:
+	make -C /lib/modules/`uname -r`/build M=`pwd` modules
+clean:
+	make -C /lib/modules/`uname -r`/build M=`pwd` clean

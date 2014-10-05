@@ -1,2 +1,4 @@
 #!/bin/bash
-make -C ~/linux/ M=`pwd` modules && sudo ./hello_unload.sh; sudo ./hello_load.sh
+make all || exit 1
+sudo ./module_unload.sh 2> /dev/null
+sudo ./module_load.sh
